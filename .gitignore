@@ -28,4 +28,6 @@ Compiled Object files
 *.app
 
 build/
-calib_imgs/
+*calib_imgs*/
+*.jpg
+*.png

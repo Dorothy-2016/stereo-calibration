@@ -28,7 +28,6 @@ void setup_calibration(int board_width, int board_height, int num_imgs,
     sprintf(img_file, "%s%s%d.%s", imgs_directory, imgs_filename, k, extension);
     img = imread(img_file, CV_LOAD_IMAGE_COLOR);
     cv::cvtColor(img, gray, CV_BGR2GRAY);
-
     bool found = false;
     found = cv::findChessboardCorners(img, board_size, corners,
                                       CV_CALIB_CB_ADAPTIVE_THRESH | CV_CALIB_CB_FILTER_QUADS);
