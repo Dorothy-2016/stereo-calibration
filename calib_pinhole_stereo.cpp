@@ -110,6 +110,7 @@ int main(int argc, char const *argv[])
   int num_imgs;
   int board_width, board_height;
   float square_size;
+  float alpha=-1;
 
   static struct poptOption options[] = {
     { "board_width",'w',POPT_ARG_INT,&board_width,0,"Checkerboard width","NUM" },
@@ -121,6 +122,8 @@ int main(int argc, char const *argv[])
     { "leftimg_filename",'l',POPT_ARG_STRING,&leftimg_filename,0,"Left image prefix","STR" },
     { "rightimg_filename",'r',POPT_ARG_STRING,&rightimg_filename,0,"Right image prefix","STR" },
     { "extension",'e',POPT_ARG_STRING,&extension,0,"Image extension","STR" },
+    { "scaling",'S',POPT_ARG_FLOAT,&alpha,0,"Free scaling parameter","NUM" },
+  POPT_AUTOHELP
     { "out_file",'o',POPT_ARG_STRING,&out_file,0,"Output calibration filename (YML)","STR" },
     POPT_AUTOHELP
     { NULL, 0, 0, NULL, 0, NULL, NULL }
@@ -175,7 +178,8 @@ int main(int argc, char const *argv[])
   printf("Starting Rectification\n");
 
   cv::Mat R1, R2, P1, P2, Q;
-  stereoRectify(K1, D1, K2, D2, img1.size(), R, T, R1, R2, P1, P2, Q, 0, -1);
+
+  stereoRectify(K1, D1, K2, D2, img1.size(), R, T, R1, R2, P1, P2, Q, 0, alpha);
 
   fs1 << "R1" << R1;
   fs1 << "R2" << R2;
