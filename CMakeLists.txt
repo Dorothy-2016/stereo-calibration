@@ -12,8 +12,8 @@ target_link_libraries(calibrate_pinhole ${OpenCV_LIBS} "-lpopt")
 #add_executable(read read_images.cpp)
 #target_link_libraries(read ${OpenCV_LIBS} "-lpopt")
 
-add_executable(calib_pinhole_stereo calib_pinhole_stereo.cpp)
-target_link_libraries(calib_pinhole_stereo ${OpenCV_LIBS} "-lpopt")
+add_executable(calibrate_pinhole_stereo calib_pinhole_stereo.cpp)
+target_link_libraries(calibrate_pinhole_stereo ${OpenCV_LIBS} "-lpopt")
 
 add_executable(undistort_rectify undistort_rectify.cpp)
 target_link_libraries(undistort_rectify ${OpenCV_LIBS} "-lpopt")
