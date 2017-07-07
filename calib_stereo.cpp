@@ -150,8 +150,8 @@ int main(int argc, char const *argv[])
   float alpha=-1;
 
   static struct poptOption options[] = {
-    { "pinehole_cam", 'P', 0, 0, 'P', "use pinehole modle", NULL },
-    { "fisheye_cam", 'F', 0, 0, 'F', "use fisheye modle", NULL },
+    { "pinehole", 'P', 0, 0, 'P', "use pinehole modle", NULL },
+    { "fisheye", 'F', 0, 0, 'F', "use fisheye modle", NULL },
     { "board_width",'w',POPT_ARG_INT,&board_width,0,"Checkerboard width","NUM" },
     { "board_height",'h',POPT_ARG_INT,&board_height,0,"Checkerboard height","NUM" },
     { "num_imgs",'n',POPT_ARG_INT,&num_imgs,0,"Number of checkerboard images","NUM" },
