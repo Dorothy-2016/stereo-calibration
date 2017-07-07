@@ -9,10 +9,12 @@
 using namespace std;
 using namespace cv;
 
-vector< vector< Point3f > > object_points,object_points1,object_points2;
+vector< vector< Point3f > > object_points;
+vector< vector< Point3d > > object_points_64;
 vector< vector< Point2f > > imagePoints1, imagePoints2;
 vector< Point2f > corners1, corners2;
 vector< vector< Point2f > > left_img_points, right_img_points;
+vector< vector< Point2d > > left_img_points_64, right_img_points_64;
 
 Mat img1, img2, gray1, gray2;
 Size im_size;
@@ -56,24 +58,37 @@ void setup_calibration(int board_width, int board_height, int num_imgs,
     }
 
     vector< Point3f > obj;
+    vector< Point3d > obj_64;
     for (int i = 0; i < board_height; i++)
       for (int j = 0; j < board_width; j++)
+      {
         obj.push_back(Point3f((float)j * square_size, (float)i * square_size, 0));
+        obj_64.push_back(Point3d(double((float)j * square_size  ), double((float)i *
+                                                                       square_size ), 0));
+      }
     if (found1 && found2) {
       cout << i << ". Found corners!" << endl;
       imagePoints1.push_back(corners1);
       imagePoints2.push_back(corners2);
       object_points.push_back(obj);
+      object_points_64.push_back(obj_64);
     }
   }
   for (int i = 0; i < imagePoints1.size(); i++) {
     vector< Point2f > v1, v2;
+    vector< Point2d > v1_64, v2_64;
     for (int j = 0; j < imagePoints1[i].size(); j++) {
       v1.push_back(Point2f((double)imagePoints1[i][j].x, (double)imagePoints1[i][j].y));
       v2.push_back(Point2f((double)imagePoints2[i][j].x, (double)imagePoints2[i][j].y));
+
+      v1_64.push_back(Point2d((double)imagePoints1[i][j].x, (double)imagePoints1[i][j].y));
+      v2_64.push_back(Point2d((double)imagePoints2[i][j].x, (double)imagePoints2[i][j].y));
     }
     left_img_points.push_back(v1);
     right_img_points.push_back(v2);
+
+    left_img_points_64.push_back(v1_64);
+    right_img_points_64.push_back(v2_64);
   }
 }
 double computeReprojectionErrors(const vector< vector< Point3f > >& objectPoints,
@@ -97,10 +112,32 @@ double computeReprojectionErrors(const vector< vector< Point3f > >& objectPoints
   }
   return std::sqrt(totalErr/totalPoints);
 }
+double computeReprojectionErrors(const vector< vector< Point3d > >& objectPoints,
+                                 const vector< vector< Point2f > >& imagePoints,
+                                 const vector< Mat >& rvecs, const vector< Mat >& tvecs,
+                                 const Mat& cameraMatrix , const Mat& distCoeffs) {
+  vector< Point2f > imagePoints2;
+  int i, totalPoints = 0;
+  double totalErr = 0, err;
+  vector< float > perViewErrors;
+  perViewErrors.resize(objectPoints.size());
+  for (i = 0; i < (int)objectPoints.size(); ++i) {
+      //Problem here
+    cv::fisheye::projectPoints(Mat(objectPoints[i]), imagePoints2, rvecs[i], tvecs[i], cameraMatrix,
+                  distCoeffs);
+    err = norm(Mat(imagePoints[i]), Mat(imagePoints2), CV_L2);
+    int n ;
+    n = (int)objectPoints[i].size();
+    perViewErrors[i] = (float) std::sqrt(err*err/n);
+    totalErr += err*err;
+    totalPoints += n;
+  }
+  return std::sqrt(totalErr/totalPoints);
+}
 int main(int argc, char const *argv[])
 {
-  char* leftcalib_file;
-  char* rightcalib_file;
+  bool pinhole_mode=false;
+  bool fisheye_mode=false;
   char* leftimg_dir;
   char* rightimg_dir;
   char* leftimg_filename;
@@ -113,6 +150,8 @@ int main(int argc, char const *argv[])
   float alpha=-1;
 
   static struct poptOption options[] = {
+    { "pinehole_cam", 'P', 0, 0, 'P', "use pinehole modle", NULL },
+    { "fisheye_cam", 'F', 0, 0, 'F', "use fisheye modle", NULL },
     { "board_width",'w',POPT_ARG_INT,&board_width,0,"Checkerboard width","NUM" },
     { "board_height",'h',POPT_ARG_INT,&board_height,0,"Checkerboard height","NUM" },
     { "num_imgs",'n',POPT_ARG_INT,&num_imgs,0,"Number of checkerboard images","NUM" },
@@ -131,7 +170,18 @@ int main(int argc, char const *argv[])
 
   POpt popt(NULL, argc, argv, options, 0);
   int c;
-  while((c = popt.getNextOpt()) >= 0) {}
+  while((c = popt.getNextOpt()) >= 0) {
+      switch (c) {
+          case 'P':
+            pinhole_mode = true;
+            fisheye_mode=false;
+            break;
+          case 'F':
+            pinhole_mode = false;
+            fisheye_mode=true;
+            break;
+       }
+  }
 
   setup_calibration(board_width, board_height, num_imgs, square_size,
                    leftimg_dir, rightimg_dir, leftimg_filename, rightimg_filename,extension);
@@ -141,28 +191,62 @@ int main(int argc, char const *argv[])
   Vec3d T;
   Mat D1, D2;
   vector< Mat > rvecs, tvecs;
+  if(pinhole_mode)
+  {
+      int flag_mono = 0;
+      flag_mono |= CV_CALIB_FIX_K4;
+      flag_mono |= CV_CALIB_FIX_K5;
+      calibrateCamera(object_points, imagePoints1, img1.size(), K1, D1, rvecs, tvecs, flag_mono);
+      cout << "Calibration 1 error: " <<
+              computeReprojectionErrors(object_points, imagePoints1, rvecs, tvecs, K1, D1) << endl;
 
-  int flag1 = 0;
-  flag1 |= CV_CALIB_FIX_K4;
-  flag1 |= CV_CALIB_FIX_K5;
-  calibrateCamera(object_points, imagePoints1, img1.size(), K1, D1, rvecs, tvecs, flag1);
-  cout << "Calibration 1 error: " <<
-          computeReprojectionErrors(object_points, imagePoints1, rvecs, tvecs, K1, D1) << endl;
+      rvecs.clear();
+      tvecs.clear();
 
-  rvecs.clear();
-  tvecs.clear();
+      calibrateCamera(object_points, imagePoints2, img2.size(), K2, D2, rvecs, tvecs, flag_mono);
+      cout << "Calibration 2 error: " <<
+              computeReprojectionErrors(object_points, imagePoints2, rvecs, tvecs, K2, D2) << endl;
 
-  calibrateCamera(object_points, imagePoints2, img2.size(), K2, D2, rvecs, tvecs, flag1);
-  cout << "Calibration 2 error: " <<
-          computeReprojectionErrors(object_points, imagePoints2, rvecs, tvecs, K2, D2) << endl;
+      int flag_stereo = 0;
+      flag_stereo |= CV_CALIB_FIX_INTRINSIC;
 
-  int flag = 0;
-  flag |= CV_CALIB_FIX_INTRINSIC;
-  
 
-  
-  stereoCalibrate(object_points, left_img_points, right_img_points, K1, D1, K2, D2, img1.size(), R, T, E, F);
 
+      stereoCalibrate(object_points, left_img_points, right_img_points, K1, D1, K2, D2, img1.size(), R, T, E, F,flag_stereo);
+    }
+  else if(fisheye_mode)
+  {
+      int flag_mono = 0;
+      flag_mono |= cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC;
+      flag_mono |= cv::fisheye::CALIB_CHECK_COND;
+      flag_mono |= cv::fisheye::CALIB_FIX_SKEW;
+      //flag_mono |= cv::fisheye::CALIB_FIX_K4;
+      cv::fisheye::calibrate(object_points_64, imagePoints1, img1.size(), K1, D1, rvecs, tvecs, flag_mono);
+//      cout << "Calibration 1 error: " <<
+//              computeReprojectionErrors(object_points_64, imagePoints1, rvecs, tvecs, K1, D1) << endl;
+
+      rvecs.clear();
+      tvecs.clear();
+
+      cv::fisheye::calibrate(object_points_64, imagePoints2, img2.size(), K2, D2, rvecs, tvecs, flag_mono);
+//      cout << "Calibration 2 error: " <<
+//              computeReprojectionErrors(object_points_64, imagePoints2, rvecs, tvecs, K2, D2) << endl;
+
+      int flag_stereo = 0;
+      flag_stereo |= cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC;
+      flag_stereo |= cv::fisheye::CALIB_CHECK_COND;
+      flag_stereo |= cv::fisheye::CALIB_FIX_SKEW;
+      //flag |= cv::fisheye::CALIB_FIX_K2;
+      //flag |= cv::fisheye::CALIB_FIX_K3;
+      //flag |= cv::fisheye::CALIB_FIX_K4;
+      cv::fisheye::stereoCalibrate(object_points_64, left_img_points_64, right_img_points_64,
+          K1, D1, K2, D2, img1.size(), R, T, flag_stereo);
+  }
+  else
+  {
+      cout<<"Please choose camera mode!"<<endl;
+      return -1;
+  }
   cv::FileStorage fs1(out_file, cv::FileStorage::WRITE);
   fs1 << "K1" << K1;
   fs1 << "K2" << K2;
@@ -178,8 +262,16 @@ int main(int argc, char const *argv[])
   printf("Starting Rectification\n");
 
   cv::Mat R1, R2, P1, P2, Q;
+  if (pinhole_mode)
+  {
+    stereoRectify(K1, D1, K2, D2, img1.size(), R, T, R1, R2, P1, P2, Q, 0, alpha);
+  }
+  else if(fisheye_mode)
+  {
+    cv::fisheye::stereoRectify(K1, D1, K2, D2, img1.size(), R, T, R1, R2, P1, P2,
+    Q, CV_CALIB_ZERO_DISPARITY, img1.size(), 0.0, 1.1);
 
-  stereoRectify(K1, D1, K2, D2, img1.size(), R, T, R1, R2, P1, P2, Q, 0, alpha);
+  }
 
   fs1 << "R1" << R1;
   fs1 << "R2" << R2;

@@ -11,6 +11,8 @@ using namespace cv;
 
 int main(int argc, char const *argv[])
 {
+    bool pinhole_mode=false;
+    bool fisheye_mode=false;
   char* leftimg_filename;
   char* rightimg_filename;
   char* calib_file;
@@ -18,6 +20,10 @@ int main(int argc, char const *argv[])
   char* rightout_filename;
 
   static struct poptOption options[] = {
+    { "pinehole_cam", 'P', 0, 0, 'P', "use pinehole modle", NULL },
+    { "fisheye_cam", 'F', 0, 0, 'F', "use fisheye modle", NULL },
+    { "pinehole_cam", 'P', 0, 0, 'P', "use pinehole modle", NULL },
+    { "fisheye_cam", 'F', 0, 0, 'F', "use fisheye modle", NULL },
     { "leftimg_filename",'l',POPT_ARG_STRING,&leftimg_filename,0,"Left imgage path","STR" },
     { "rightimg_filename",'r',POPT_ARG_STRING,&rightimg_filename,0,"Right image path","STR" },
     { "calib_file",'c',POPT_ARG_STRING,&calib_file,0,"Stereo calibration file","STR" },
@@ -29,18 +35,26 @@ int main(int argc, char const *argv[])
 
   POpt popt(NULL, argc, argv, options, 0);
   int c;
-  while((c = popt.getNextOpt()) >= 0) {}
+  while((c = popt.getNextOpt()) >= 0) {
+      switch (c) {
+          case 'P':
+            pinhole_mode = true;
+            fisheye_mode=false;
+            break;
+          case 'F':
+            pinhole_mode = false;
+            fisheye_mode=true;
+            break;
+       }
+  }
 
   Mat R1, R2, P1, P2, Q;
   Mat K1, K2, R;
   Vec3d T;
   Mat D1, D2;
-  cout<<"111111"<<endl;
   Mat img1 = imread(leftimg_filename, CV_LOAD_IMAGE_COLOR);
   Mat img2 = imread(rightimg_filename, CV_LOAD_IMAGE_COLOR);
-    cout<<"22222"<<endl;
   cv::FileStorage fs1(calib_file, cv::FileStorage::READ);
-  cout<<"222233333"<<endl;
   fs1["K1"] >> K1;
   fs1["K2"] >> K2;
   cout<<"a"<<endl;
@@ -51,7 +65,6 @@ int main(int argc, char const *argv[])
   cout<<"a"<<endl;
   //fs1["T"] >> T;
 
-  cout<<"33333"<<endl;
 
   fs1["R1"] >> R1;
   fs1["R2"] >> R2;
@@ -59,15 +72,20 @@ int main(int argc, char const *argv[])
   fs1["P2"] >> P2;
   fs1["Q"] >> Q;
 
-  cout<<"444444"<<endl;
 
   cv::Mat lmapx, lmapy, rmapx, rmapy;
   cv::Mat imgU1, imgU2;
   cout<<"before"<<endl;
-//  cv::initUndistortRectifyMap(K1, D1, R1, P1, img1.size(), CV_32F, lmapx, lmapy);
-//  cv::initUndistortRectifyMap(K2, D2, R2, P2, img2.size(), CV_32F, rmapx, rmapy);
-  cv::fisheye::initUndistortRectifyMap(K1, D1, R1, P1, img1.size(), CV_32F, lmapx, lmapy);
-  cv::fisheye::initUndistortRectifyMap(K2, D2, R2, P2, img2.size(), CV_32F, rmapx, rmapy);
+  if(pinhole_mode)
+  {
+      cv::initUndistortRectifyMap(K1, D1, R1, P1, img1.size(), CV_32F, lmapx, lmapy);
+      cv::initUndistortRectifyMap(K2, D2, R2, P2, img2.size(), CV_32F, rmapx, rmapy);
+  }
+  else if (fisheye_mode)
+  {
+      cv::fisheye::initUndistortRectifyMap(K1, D1, R1, P1, img1.size(), CV_32F, lmapx, lmapy);
+      cv::fisheye::initUndistortRectifyMap(K2, D2, R2, P2, img2.size(), CV_32F, rmapx, rmapy);
+  }
   cv::remap(img1, imgU1, lmapx, lmapy, cv::INTER_LINEAR);
   cv::remap(img2, imgU2, rmapx, rmapy, cv::INTER_LINEAR);
   
