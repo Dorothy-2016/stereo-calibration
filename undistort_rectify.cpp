@@ -57,12 +57,9 @@ int main(int argc, char const *argv[])
   cv::FileStorage fs1(calib_file, cv::FileStorage::READ);
   fs1["K1"] >> K1;
   fs1["K2"] >> K2;
-  cout<<"a"<<endl;
   fs1["D1"] >> D1;
   fs1["D2"] >> D2;
-  cout<<"a"<<endl;
   fs1["R"] >> R;
-  cout<<"a"<<endl;
   //fs1["T"] >> T;
 
 
@@ -75,7 +72,7 @@ int main(int argc, char const *argv[])
 
   cv::Mat lmapx, lmapy, rmapx, rmapy;
   cv::Mat imgU1, imgU2;
-  cout<<"before"<<endl;
+
   if(pinhole_mode)
   {
       cv::initUndistortRectifyMap(K1, D1, R1, P1, img1.size(), CV_32F, lmapx, lmapy);

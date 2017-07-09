@@ -59,11 +59,11 @@ void setup_calibration(int board_width, int board_height, int num_imgs,
 
     vector< Point3f > obj;
     vector< Point3d > obj_64;
-    for (int i = 0; i < board_height; i++)
-      for (int j = 0; j < board_width; j++)
+    for (int ii = 0; ii < board_height; ii++)
+      for (int jj = 0; jj < board_width; jj++)
       {
-        obj.push_back(Point3f((float)j * square_size, (float)i * square_size, 0));
-        obj_64.push_back(Point3d(double((float)j * square_size  ), double((float)i *
+        obj.push_back(Point3f((float)jj * square_size, (float)ii * square_size, 0));
+        obj_64.push_back(Point3d(double((float)(jj+1) * square_size  ), double((float)(ii+1) *
                                                                        square_size ), 0));
       }
     if (found1 && found2) {
@@ -95,7 +95,7 @@ double computeReprojectionErrors(const vector< vector< Point3f > >& objectPoints
                                  const vector< vector< Point2f > >& imagePoints,
                                  const vector< Mat >& rvecs, const vector< Mat >& tvecs,
                                  const Mat& cameraMatrix , const Mat& distCoeffs) {
-  vector< Point2f > imagePoints2;
+  vector< Point2f > imagePoints_out;
   int i, totalPoints = 0;
   double totalErr = 0, err;
   vector< float > perViewErrors;
@@ -103,8 +103,8 @@ double computeReprojectionErrors(const vector< vector< Point3f > >& objectPoints
 
   for (i = 0; i < (int)objectPoints.size(); ++i) {
     projectPoints(Mat(objectPoints[i]), rvecs[i], tvecs[i], cameraMatrix,
-                  distCoeffs, imagePoints2);
-    err = norm(Mat(imagePoints[i]), Mat(imagePoints2), CV_L2);
+                  distCoeffs, imagePoints_out);
+    err = norm(Mat(imagePoints[i]), Mat(imagePoints_out), CV_L2);
     int n = (int)objectPoints[i].size();
     perViewErrors[i] = (float) std::sqrt(err*err/n);
     totalErr += err*err;
@@ -116,16 +116,16 @@ double computeReprojectionErrors(const vector< vector< Point3d > >& objectPoints
                                  const vector< vector< Point2f > >& imagePoints,
                                  const vector< Mat >& rvecs, const vector< Mat >& tvecs,
                                  const Mat& cameraMatrix , const Mat& distCoeffs) {
-  vector< Point2f > imagePoints2;
+  vector< Point2f > imagePoints_out;
   int i, totalPoints = 0;
   double totalErr = 0, err;
   vector< float > perViewErrors;
   perViewErrors.resize(objectPoints.size());
   for (i = 0; i < (int)objectPoints.size(); ++i) {
       //Problem here
-    cv::fisheye::projectPoints(Mat(objectPoints[i]), imagePoints2, rvecs[i], tvecs[i], cameraMatrix,
+    cv::fisheye::projectPoints(Mat(objectPoints[i]), imagePoints_out, rvecs[i], tvecs[i], cameraMatrix,
                   distCoeffs);
-    err = norm(Mat(imagePoints[i]), Mat(imagePoints2), CV_L2);
+    err = norm(Mat(imagePoints[i]), Mat(imagePoints_out), CV_L2);
     int n ;
     n = (int)objectPoints[i].size();
     perViewErrors[i] = (float) std::sqrt(err*err/n);
@@ -216,22 +216,22 @@ int main(int argc, char const *argv[])
     }
   else if(fisheye_mode)
   {
+
       int flag_mono = 0;
       flag_mono |= cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC;
       flag_mono |= cv::fisheye::CALIB_CHECK_COND;
       flag_mono |= cv::fisheye::CALIB_FIX_SKEW;
       //flag_mono |= cv::fisheye::CALIB_FIX_K4;
+
       cv::fisheye::calibrate(object_points_64, imagePoints1, img1.size(), K1, D1, rvecs, tvecs, flag_mono);
 //      cout << "Calibration 1 error: " <<
 //              computeReprojectionErrors(object_points_64, imagePoints1, rvecs, tvecs, K1, D1) << endl;
 
       rvecs.clear();
       tvecs.clear();
-
       cv::fisheye::calibrate(object_points_64, imagePoints2, img2.size(), K2, D2, rvecs, tvecs, flag_mono);
 //      cout << "Calibration 2 error: " <<
 //              computeReprojectionErrors(object_points_64, imagePoints2, rvecs, tvecs, K2, D2) << endl;
-
       int flag_stereo = 0;
       flag_stereo |= cv::fisheye::CALIB_RECOMPUTE_EXTRINSIC;
       flag_stereo |= cv::fisheye::CALIB_CHECK_COND;
@@ -269,7 +269,7 @@ int main(int argc, char const *argv[])
   else if(fisheye_mode)
   {
     cv::fisheye::stereoRectify(K1, D1, K2, D2, img1.size(), R, T, R1, R2, P1, P2,
-    Q, CV_CALIB_ZERO_DISPARITY, img1.size(), 0.0, 1.1);
+    Q, CV_CALIB_ZERO_DISPARITY, img1.size(), 0.0, 1.0);
 
   }
 
